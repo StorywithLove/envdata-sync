@@ -59,7 +59,7 @@ def get_decrypted_aqi_data():
         df = df.drop(['evatime'], axis=1)
 
         timestamp = df.time.iloc[0].strftime(format="%Y-%m-%dT%H")
-        daily_folder = Path('Archive')/timestamp[:10]
+        daily_folder = Path('Archive')/'ZJEMC'/timestamp[:10]
         daily_folder.mkdir(parents=True, exist_ok=True)
         df.to_csv(daily_folder/(timestamp+'.csv'), mode='w')
         
