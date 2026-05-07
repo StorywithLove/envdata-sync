@@ -1,0 +1,53 @@
+name: ZJEMC_Selenium_Update
+
+on:
+  # schedule:
+    # - cron: "45 * * * *"   # 每小时执行一次
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    steps:
+      # 1️⃣ 拉代码
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # 2️⃣ 安装 Python
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      # 3️⃣ 安装依赖（关键）
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install selenium webdriver-manager pandas requests
+
+      # 4️⃣ 安装 Chrome + driver（关键）
+      - name: Check Chrome
+        run: |
+          google-chrome --version || true
+
+      # 5️⃣ 运行脚本
+      - name: Run crawler
+        run: |
+          python zjemc_selenium.py
+      - name: Commit changes if any
+        run: |
+          git config --global user.email "BOT@github.com"
+          git config --global user.name "githubBOT"
+          git add .
+          git diff --cached --quiet || git commit -m "update realtime data" -a
+          # git commit -m "update realtime data" -a
+      - name: Who am I (git)
+        run: |
+          git remote -v
+          git config --get user.name
+          git config --get user.email
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{secrets.GTOKEN}}
