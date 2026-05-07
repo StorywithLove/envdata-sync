@@ -21,21 +21,21 @@ jobs:
     - name: Migrate Archive → CNEMC
       run: |
         mkdir -p Archive/CNEMC
-        # 防止没有文件时报错
-        shopt -s nullglob
-        for file in Archive/*.csv; do
-          echo "Moving $file"
-          mv "$file" Archive/CNEMC/
+        
+        for file in Archive/*/*.csv; do
+          date_folder=$(basename $(dirname "$file"))
+          mkdir -p Archive/CNEMC/$date_folder
+          mv "$file" Archive/CNEMC/$date_folder/
         done
-    - name: Migrate Archive → ZJEMC (if needed)
-      run: |
-        mkdir -p Archive/ZJEMC
-        shopt -s nullglob
-        # 如果未来你有规则区分，这里可以扩展
-        # 当前示例：空逻辑占位
-        for file in Archive/ZJEMC_source/*.csv; do
-          mv "$file" Archive/ZJEMC/
-        done
+    # - name: Migrate Archive → ZJEMC (if needed)
+    #   run: |
+    #     mkdir -p Archive/ZJEMC
+    #     shopt -s nullglob
+    #     # 如果未来你有规则区分，这里可以扩展
+    #     # 当前示例：空逻辑占位
+    #     for file in Archive/ZJEMC_source/*.csv; do
+    #       mv "$file" Archive/ZJEMC/
+    #     done
 
     # =========================
     # 提交变更
