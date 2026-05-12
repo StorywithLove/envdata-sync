@@ -80,7 +80,7 @@ jobs:
         git config --global user.email "BOT@github.com"
         git config --global user.name "githubBOT"
         git add .
-        git diff --cached --quiet || git commit -m "update realtime data" -a
+        git diff --cached --quiet || git commit -m "update realtime CNEMC" -a
         # git commit -m "update realtime CNEMC" -a
     - name: Who am I (git)
       run: |
