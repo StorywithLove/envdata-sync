@@ -44,7 +44,7 @@ jobs:
       # 4️⃣ 运行爬虫
       - name: Run crawler
         run: |
-          python src/EMC/zjemc_playwright.py
+          python src/EMC/zjemc_selenium.py
 
       # 5️⃣ 提交变更
       - name: Commit changes if any
