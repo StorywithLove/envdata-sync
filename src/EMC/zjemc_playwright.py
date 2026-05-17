@@ -18,7 +18,7 @@ def get_decrypted_aqi_data():
             "Referer": "https://www.baidu.com/"
         })
         # 打开页面
-        page.goto("https://aqi.zjemc.org.cn/", timeout=60000)
+        page.goto("https://aqi.zjemc.org.cn/", timeout=60000, wait_until="domcontentloaded")
         page.wait_for_selector(".marker_container", timeout=30000)
         
         # ===================== 【关键】点击下拉框，选择 省控站点 =====================
