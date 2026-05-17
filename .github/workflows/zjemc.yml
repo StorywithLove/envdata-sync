@@ -36,6 +36,9 @@ jobs:
         run: |
           pip install playwright pandas requests
           playwright install chromium
+          # selenium for base
+          pip install selenium webdriver-manager pandas requests  
+          google-chrome --version || true
 
       # 4️⃣ 运行爬虫
       - name: Run crawler
