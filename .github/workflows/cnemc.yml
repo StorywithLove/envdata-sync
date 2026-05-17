@@ -39,7 +39,7 @@ jobs:
         pip install requests numpy pandas
     - name: Run Python
       run: |
-        python cnemc_whole.py
+        python src/EMC/cnemc_api.py
 
     - name: Clean historical data (older than 12 months)
       run: |
