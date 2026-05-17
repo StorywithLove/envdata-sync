@@ -81,7 +81,7 @@ jobs:
         # =========================
         # 2. 清理 PVPower 月份文件夹下的单文件
         # =========================
-        echo "--- Processing file archive: PVPower ---"
+        echo "--- Processing PVPower ---"
         
         PV_DIR="Archive/PVPower"
         
