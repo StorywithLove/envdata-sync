@@ -138,13 +138,25 @@ def capture_add_chart_request(username, password, headless=True):
     """
     Log into GinlongCloud with Playwright and capture one addChart request template.
     """
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
     from playwright.sync_api import sync_playwright
+
+    def latest_add_chart_request(requests_seen):
+        """
+        Return the newest captured addChart request that has a JSON body.
+        """
+        for request in reversed(requests_seen):
+            if "addChart" in request.url and request.post_data:
+                return request
+        return None
 
     web_url = "https://v3.ginlongcloud.com#/station/stationDetails/generalSituation/1299184320438401096"
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=headless)
         context = browser.new_context(locale="zh-CN", timezone_id="Asia/Shanghai")
         page = context.new_page()
+        add_chart_requests = []
+        page.on("request", lambda request: add_chart_requests.append(request) if "addChart" in request.url else None)
         page.goto(web_url, wait_until="domcontentloaded", timeout=60000)
 
         page.locator(".login").wait_for(timeout=30000)
@@ -164,13 +176,20 @@ def capture_add_chart_request(username, password, headless=True):
         page.locator("div.login-btn button.el-button--primary").click(force=True)
 
         page.locator("div.date-select").wait_for(timeout=60000)
-        export_button = page.locator("div.date-select div.station-export button").nth(1)
-        export_button.scroll_into_view_if_needed()
+        request = latest_add_chart_request(add_chart_requests)
+        if request is None:
+            export_button = page.locator("div.date-select div.station-export button").nth(1)
+            export_button.scroll_into_view_if_needed()
+            try:
+                with page.expect_request(lambda req: "addChart" in req.url, timeout=60000) as request_info:
+                    export_button.click(force=True)
+                request = request_info.value
+            except PlaywrightTimeoutError:
+                request = latest_add_chart_request(add_chart_requests)
+                if request is None:
+                    raise
 
-        with page.expect_request(lambda req: "addChart" in req.url, timeout=60000) as request_info:
-            export_button.click(force=True)
-        request = request_info.value
-
+        logging.info("captured addChart request: %s", request.url)
         headers = {
             key: value
             for key, value in request.headers.items()
