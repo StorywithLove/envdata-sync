@@ -1,4 +1,4 @@
-name: migrate_external_archive
+name: Reorganize PVPower Archive
 
 on:
   workflow_dispatch:
@@ -6,38 +6,94 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: reorganize-pvpower-archive
+  cancel-in-progress: false
+
 jobs:
-  migrate:
+  reorganize:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout current repo
-      uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          sparse-checkout: |
+            Archive/PVPower
+          sparse-checkout-cone-mode: true
 
-    - name: Clone source repo
-      run: |
-        git clone https://github.com/StorywithLove/ZJEMC.git source_repo
+      - name: Reorganize PVPower files by month
+        shell: bash
+        run: |
+          set -e
 
-    - name: Create target folder
-      run: |
-        mkdir -p Archive/ZJEMC
+          echo "=== Reorganizing Archive/PVPower files ==="
 
-    - name: Copy data
-      run: |
-        cp -r source_repo/Archive/* Archive/ZJEMC/ || true
+          PV_DIR="Archive/PVPower"
 
-    - name: Commit changes
-      run: |
-        git config user.name "github-actions"
-        git config user.email "github-actions@github.com"
+          if [ ! -d "$PV_DIR" ]; then
+            echo "Directory not found: $PV_DIR"
+            exit 0
+          fi
 
-        git add Archive/ZJEMC
+          shopt -s nullglob
 
-        git diff --cached --quiet && echo "No changes" && exit 0
+          moved_count=0
+          skipped_count=0
 
-        git commit -m "migrate external Archive → ZJEMC"
+          for file in "$PV_DIR"/HZ_*.csv; do
+            [ -f "$file" ] || continue
 
-    - name: Push
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GTOKEN }}
+            filename=$(basename "$file")
+
+            # 匹配 HZ_YYYY-MM-DD.csv
+            if [[ "$filename" =~ ^HZ_([0-9]{4})-([0-9]{2})-[0-9]{2}\.csv$ ]]; then
+              year="${BASH_REMATCH[1]}"
+              month="${BASH_REMATCH[2]}"
+              month_dir="$PV_DIR/${year}-${month}"
+
+              mkdir -p "$month_dir"
+
+              target="$month_dir/$filename"
+
+              if [ -e "$target" ]; then
+                echo "Target already exists, skip: $target"
+                skipped_count=$((skipped_count + 1))
+              else
+                echo "Moving $file -> $target"
+                mv "$file" "$target"
+                moved_count=$((moved_count + 1))
+              fi
+            else
+              echo "Skip unmatched file: $filename"
+              skipped_count=$((skipped_count + 1))
+            fi
+          done
+
+          echo "=== Summary ==="
+          echo "Moved files: $moved_count"
+          echo "Skipped files: $skipped_count"
+
+          echo "=== Current PVPower structure ==="
+          find "$PV_DIR" -maxdepth 2 -type f | sort | head -100
+
+      - name: Commit and push changes
+        shell: bash
+        run: |
+          set -e
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add -A Archive/PVPower
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Reorganize PVPower archive by month"
+
+          git pull --rebase origin main
+          git push origin HEAD:main
