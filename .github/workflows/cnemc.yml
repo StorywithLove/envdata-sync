@@ -77,41 +77,67 @@ jobs:
             fi
           done
         done
-        
+                
         # =========================
-        # 2. 清理 PVPower 单文件
+        # 2. 清理 PVPower 月份文件夹下的单文件
         # =========================
         echo "--- Processing file archive: PVPower ---"
-    
+        
         PV_DIR="Archive/PVPower"
-    
+        
         if [ -d "$PV_DIR" ]; then
-          for file in "$PV_DIR"/HZ_*.csv; do
-            [ -f "$file" ] || continue
-    
-            FILE_NAME=$(basename "$file")
-    
-            # 匹配 HZ_YYYY-MM-DD.csv
-            if [[ "$FILE_NAME" =~ ^HZ_([0-9]{4}-[0-9]{2}-[0-9]{2})\.csv$ ]]; then
-              DATE_FILE="${BASH_REMATCH[1]}"
-    
-              if [[ "$DATE_FILE" < "$THRESHOLD_DATE" ]]; then
-                HIST_FILE_URL="$HIST_REPO/PVPower/$FILE_NAME"
-    
-                if curl --head --silent --fail "$HIST_FILE_URL" >/dev/null; then
-                  echo "Deleting $file (found in historical repo: $FILE_NAME)"
-                  rm -f "$file"
-                else
-                  echo "Keep $file (not found in historical repo: $FILE_NAME)"
+          # 遍历 Archive/PVPower/2025-06 这类月份文件夹
+          for month_folder in "$PV_DIR"/*; do
+            [ -d "$month_folder" ] || continue
+        
+            MONTH_NAME=$(basename "$month_folder")
+        
+            # 只处理 YYYY-MM 格式的月份文件夹
+            if [[ ! "$MONTH_NAME" =~ ^[0-9]{4}-[0-9]{2}$ ]]; then
+              echo "Skip unmatched PVPower month folder: $MONTH_NAME"
+              continue
+            fi
+        
+            for file in "$month_folder"/HZ_*.csv; do
+              [ -f "$file" ] || continue
+        
+              FILE_NAME=$(basename "$file")
+        
+              # 匹配 HZ_YYYY-MM-DD.csv
+              if [[ "$FILE_NAME" =~ ^HZ_([0-9]{4}-[0-9]{2}-[0-9]{2})\.csv$ ]]; then
+                DATE_FILE="${BASH_REMATCH[1]}"
+                FILE_MONTH="${DATE_FILE:0:7}"
+        
+                # 文件名月份和所在文件夹月份不一致时，跳过，避免误删
+                if [ "$FILE_MONTH" != "$MONTH_NAME" ]; then
+                  echo "Skip mismatched file: $file, file month=$FILE_MONTH, folder month=$MONTH_NAME"
+                  continue
                 fi
+                if [[ "$DATE_FILE" < "$THRESHOLD_DATE" ]]; then
+                  HIST_FILE_URL="$HIST_REPO/PVPower/$MONTH_NAME/$FILE_NAME"
+        
+                  if curl --head --silent --fail "$HIST_FILE_URL" >/dev/null; then
+                    echo "Deleting $file (found in historical repo: PVPower/$MONTH_NAME/$FILE_NAME)"
+                    rm -f "$file"
+                  else
+                    echo "Keep $file (not found in historical repo: PVPower/$MONTH_NAME/$FILE_NAME)"
+                  fi
+                fi
+              else
+                echo "Skip unmatched PVPower file: $FILE_NAME"
               fi
-            else
-              echo "Skip unmatched PVPower file: $FILE_NAME"
+            done
+        
+            # 如果月份文件夹被删空，则删除空文件夹
+            if [ -z "$(find "$month_folder" -mindepth 1 -print -quit)" ]; then
+              echo "Deleting empty month folder: $month_folder"
+              rmdir "$month_folder"
             fi
           done
         else
           echo "PVPower directory not found: $PV_DIR"
         fi
+        
     - name: Commit changes if any
       run: |
         git config --global user.email "BOT@github.com"
