@@ -73,7 +73,7 @@ jobs:
         run: |
           git config --global user.email "BOT@github.com"
           git config --global user.name "githubBOT"
-          git add data/
+          git add Archive/PVPower/
           git diff --cached --quiet || git commit -m "update realtime HZ PV power"
 
       # 7. git 状态检查
