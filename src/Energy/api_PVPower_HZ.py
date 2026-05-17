@@ -1,4 +1,3 @@
-# standard lib
 import argparse
 import json
 import logging
@@ -8,14 +7,12 @@ from copy import deepcopy
 from io import BytesIO
 from pathlib import Path
 from zoneinfo import ZoneInfo
-from pathlib import Path
 
-# third-party lib
 import pandas as pd
 import requests
 
 
-DATA_DIR = Path('Archive')/'PVPower'
+DATA_DIR = Path("Archive") / "PVPower"
 LOCAL_TZ = ZoneInfo("Asia/Shanghai")
 
 STATIONS = [
@@ -32,10 +29,9 @@ STATIONS = [
 ]
 
 
-# 配置命令行和 Action 日志。
 def setup_logging():
     """
-    配置脚本运行日志，便于本地和 GitHub Actions 中查看执行状态。
+    Configure script logging for local runs and GitHub Actions.
     """
     logging.basicConfig(
         level=logging.INFO,
@@ -44,21 +40,20 @@ def setup_logging():
     )
 
 
-# 从接口返回的 Excel 单元格中提取要素信息和表格。
 def extract_day_chart_df(raw_df, source="response.content"):
     """
-    从已读取的 Excel 单元格 DataFrame 中提取电站要素信息和表格数据。
+    Extract metadata and table cells from the Excel-like DataFrame.
     """
     def after_colon(value):
         """
-        提取冒号后的文本，用于解析电站名称等字段。
+        Return text after the first colon when present.
         """
         value = str(value).strip()
         return value.split(":", 1)[1].strip() if ":" in value else value
 
     def first_number(value):
         """
-        从包含单位的文本中提取第一个数值。
+        Extract the first numeric value from a text field containing units.
         """
         match = re.search(r"-?\d+(?:\.\d+)?", str(value))
         return float(match.group(0)) if match else None
@@ -85,19 +80,17 @@ def extract_day_chart_df(raw_df, source="response.content"):
     return info, table
 
 
-# 从接口 response.content 中直接读取 Excel 内容。
 def extract_day_chart_content(content):
     """
-    将接口返回的 Excel 二进制内容读入内存，并提取要素信息和表格。
+    Read the binary Excel response in memory and extract metadata/table data.
     """
     raw_df = pd.read_excel(BytesIO(content), index_col=None, header=None, engine="xlrd", dtype=str).fillna("")
     return extract_day_chart_df(raw_df)
 
 
-# 将单个站点的不定长功率表归一化为 96 个 15 分钟点。
 def normalize_station_day_table(table, cur_date, site_name):
     """
-    将单站点 PV(W) 转为 MW，并补齐为指定日期的 96 点序列；当天未来时刻保留为空值。
+    Convert one station table from PV(W) to MW and normalize it to 96 daily 15-minute points.
     """
     day_index = pd.date_range(f"{cur_date} 00:00", periods=96, freq="15min")
     station_df = table.copy()
@@ -114,10 +107,9 @@ def normalize_station_day_table(table, cur_date, site_name):
     return station_series.rename(site_name)
 
 
-# 合并两个站点的 96 点序列为最终日表。
 def merge_station_day_tables(station_tables, cur_date):
     """
-    合并站点序列，返回以 datetime 时间为索引、站点名称为列名的日表。
+    Merge station series into a datetime-indexed day table.
     """
     day_index = pd.date_range(f"{cur_date} 00:00", periods=96, freq="15min")
     merged_df = pd.concat(station_tables, axis=1).reindex(day_index)
@@ -126,10 +118,9 @@ def merge_station_day_tables(station_tables, cur_date):
     return merged_df
 
 
-# 根据命令行参数生成待处理日期列表。
 def build_date_list(start_date=None, end_date=None):
     """
-    无日期参数时处理今天；一个日期参数时处理该日；两个日期参数时处理闭区间日期列表。
+    Build the target date list from optional start/end date arguments.
     """
     if not start_date:
         return [pd.Timestamp.now(tz=LOCAL_TZ).strftime("%Y-%m-%d")]
@@ -143,10 +134,9 @@ def build_date_list(start_date=None, end_date=None):
     return pd.date_range(start=start_ts, end=end_ts, freq="D").strftime("%Y-%m-%d").tolist()
 
 
-# 登录锦浪云并捕获一次 addChart 请求模板。
 def capture_add_chart_request(username, password, headless=True):
     """
-    使用 Playwright 登录页面并触发导出，返回 addChart 请求的 URL、headers 和 JSON body。
+    Log into GinlongCloud with Playwright and capture one addChart request template.
     """
     from playwright.sync_api import sync_playwright
 
@@ -160,7 +150,17 @@ def capture_add_chart_request(username, password, headless=True):
         page.locator(".login").wait_for(timeout=30000)
         page.locator("input[placeholder='请填写手机号、邮箱或用户名']").fill(username)
         page.locator("input[placeholder='请填写密码']").fill(password)
-        page.locator("label.el-checkbox input.el-checkbox__original").click(force=True)
+        try:
+            page.locator("label.el-checkbox").click(force=True, timeout=5000)
+        except Exception:
+            page.locator("label.el-checkbox input.el-checkbox__original").evaluate(
+                """element => {
+                    if (!element.checked) {
+                        element.click();
+                        element.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }"""
+            )
         page.locator("div.login-btn button.el-button--primary").click(force=True)
 
         page.locator("div.date-select").wait_for(timeout=60000)
@@ -183,10 +183,9 @@ def capture_add_chart_request(username, password, headless=True):
         return result
 
 
-# 使用请求模板下载指定日期的两个站点数据。
 def download_day(request_template, cur_date):
     """
-    调用 addChart 接口下载两个站点数据，生成固定 96 点的合并 DataFrame。
+    Download both station tables for one date and return the merged 96-point DataFrame.
     """
     station_tables = []
     for station in STATIONS:
@@ -216,23 +215,21 @@ def download_day(request_template, cur_date):
     return merge_station_day_tables(station_tables, cur_date)
 
 
-# 保存指定日期的合并日表。
 def save_day_power(request_template, cur_date):
     """
-    下载、合并并保存指定日期的杭州电站功率日表。
+    Download, merge, and save the Hangzhou PV power table for one date.
     """
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     merged_df = download_day(request_template, cur_date)
-    save_path = DATA_DIR / f"杭州_{cur_date}.csv"
+    save_path = DATA_DIR / f"HZ_{cur_date}.csv"
     merged_df.to_csv(save_path, index=True, encoding="utf-8-sig")
     logging.info("saved %s", save_path)
     return save_path
 
 
-# 解析命令行参数。
 def parse_args():
     """
-    解析日期范围和浏览器运行模式参数。
+    Parse date range and browser mode arguments.
     """
     parser = argparse.ArgumentParser(description="Download Hangzhou PV power data from GinlongCloud.")
     parser.add_argument("start_date", nargs="?", help="start date, YYYY-MM-DD; omitted means today")
@@ -241,10 +238,9 @@ def parse_args():
     return parser.parse_args()
 
 
-# 脚本入口。
 def main():
     """
-    从环境变量读取账号，捕获接口请求模板，并批量下载日期列表数据。
+    Read credentials from environment variables, capture request template, and download target dates.
     """
     setup_logging()
     args = parse_args()
