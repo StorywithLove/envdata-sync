@@ -8,14 +8,14 @@ from copy import deepcopy
 from io import BytesIO
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from pathlib import Path
 
 # third-party lib
 import pandas as pd
 import requests
 
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-DATA_DIR = SCRIPT_DIR / "data"
+DATA_DIR = Path('Archive')/'PVPower'
 LOCAL_TZ = ZoneInfo("Asia/Shanghai")
 
 STATIONS = [
@@ -223,7 +223,7 @@ def save_day_power(request_template, cur_date):
     """
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     merged_df = download_day(request_template, cur_date)
-    save_path = DATA_DIR / f"电站日表_{cur_date}.csv"
+    save_path = DATA_DIR / f"杭州_{cur_date}.csv"
     merged_df.to_csv(save_path, index=True, encoding="utf-8-sig")
     logging.info("saved %s", save_path)
     return save_path
