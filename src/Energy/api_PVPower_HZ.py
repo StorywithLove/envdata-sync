@@ -20,15 +20,17 @@ PROJECT_DIR = Path(os.getenv("GITHUB_WORKSPACE", "")).resolve() if os.getenv("GI
 PVPower_DIR = PROJECT_DIR / "Archive" / "PVPower"
 LOCAL_TZ = ZoneInfo("Asia/Shanghai")
 
+site_name_1 = os.getenv("SITE_NAME_1") or os.getenv("site_name_1")
+site_name_2 = os.getenv("SITE_NAME_2") or os.getenv("site_name_2")
 STATIONS = [
     {
-        "column": "欧伦",
-        "station_name": "欧伦1.3835MWp分布式光伏发电系统",
+        "column": site_name_1,
+        "station_name": f"{site_name_1}1.3835MWp分布式光伏发电系统",
         "station_id": "1299184320438401096",
     },
     {
-        "column": "鸿旺",
-        "station_name": "鸿旺1.582MWp分布式光伏发电系统",
+        "column": site_name_2,
+        "station_name": f"{site_name_2}1.582MWp分布式光伏发电系统",
         "station_id": "1299184320438147269",
     },
 ]
@@ -120,7 +122,7 @@ def merge_station_day_tables(station_tables, cur_date):
     """
     day_index = pd.date_range(f"{cur_date} 00:00", periods=96, freq="15min")
     merged_df = pd.concat(station_tables, axis=1).reindex(day_index)
-    merged_df = merged_df[["鸿旺", "欧伦"]]
+    merged_df = merged_df[[site_name_2, site_name_1]]
     merged_df.index.name = "时间"
     return merged_df
 
