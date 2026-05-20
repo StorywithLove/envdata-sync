@@ -23,6 +23,8 @@ jobs:
     env:
       TZ: Asia/Shanghai
       GLC_WEB_URL: ${{ secrets.GLC_WEB_URL }}
+      SITE_NAME_1: ${{ secrets.SITE_NAME_1 }}
+      SITE_NAME_2: ${{ secrets.SITE_NAME_2 }}
       GLC_USR: ${{ secrets.GLC_USR }}
       GLC_PWD: ${{ secrets.GLC_PWD }}
       START_DATE: ${{ github.event.inputs.start_date || '' }}
