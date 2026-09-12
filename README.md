@@ -4,14 +4,14 @@
 
 （1）快速加载小时数据   
 ```python
-import pandas
-url = "https://raw.githubusercontent.com/StorywithLove/workflow/main/Archive/2026-04-28/2026-04-28T00.csv"
+import pandas as pd
+url = "https://raw.githubusercontent.com/StorywithLove/envdata-sync/main/Archive/CNEMC/2026-04-28/2026-04-28T00.csv"
 df = pd.read_csv(url)
 ```
 （2）打印当天数据详情
 ```python
 import requests
-url = "https://api.github.com/repos/StorywithLove/workflow/contents/Archive/2026-04-28"
+url = "https://api.github.com/repos/StorywithLove/envdata-sync/contents/Archive/CNEMC/2026-04-28"
 resp = requests.get(url, timeout=10)
 files = resp.json()
 file_list = [f['name'] for f in files]
